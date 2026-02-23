@@ -1,14 +1,22 @@
 """
 Step 2: Create two Foundry agents for comparison.
 
-Agent A ("Generic_Assistant"): Plain prompt, no personality.
-Agent B ("Teen_Friendly_Assistant"): Rich soul definition - fun, friendly, teenager-oriented.
+Agent A ("generic-assistant"): Plain prompt, no personality.
+Agent B ("teen-friendly-assistant"): Rich soul definition - fun, friendly, teenager-oriented.
 
-Both use the same model so the only difference is the system prompt / soul.
+Both use the same model and have access to Bing web search for grounding,
+so the only difference is the system prompt / soul.
 """
 
-from azure.ai.projects.models import PromptAgentDefinition
+from azure.ai.projects.models import (
+    BingGroundingAgentTool,
+    BingGroundingSearchConfiguration,
+    BingGroundingSearchToolParameters,
+    PromptAgentDefinition,
+)
 from helpers import get_clients, MODEL_DEPLOYMENT
+
+BING_CONNECTION_ID = "groundingbingtokubica"
 
 AGENT_A_NAME = "generic-assistant"
 AGENT_A_INSTRUCTIONS = "You are a helpful assistant. Answer user questions accurately and concisely."
@@ -40,14 +48,26 @@ IMPORTANT RULES:
 def main():
     project_client, _ = get_clients()
 
+    # Bing grounding tool – gives both agents access to web search
+    bing_tool = BingGroundingAgentTool(
+        bing_grounding=BingGroundingSearchToolParameters(
+            search_configurations=[
+                BingGroundingSearchConfiguration(
+                    project_connection_id=BING_CONNECTION_ID,
+                )
+            ]
+        )
+    )
+
     # --- Agent A: Generic (no personality) ---
     agent_a = project_client.agents.create_version(
         agent_name=AGENT_A_NAME,
         definition=PromptAgentDefinition(
             model=MODEL_DEPLOYMENT,
             instructions=AGENT_A_INSTRUCTIONS,
+            tools=[bing_tool],
         ),
-        description="Plain assistant with no personality definition.",
+        description="Plain assistant with no personality definition. Has web search.",
     )
     print(f"Agent A created: {agent_a.name} (version {agent_a.version})")
 
@@ -57,8 +77,9 @@ def main():
         definition=PromptAgentDefinition(
             model=MODEL_DEPLOYMENT,
             instructions=AGENT_B_INSTRUCTIONS,
+            tools=[bing_tool],
         ),
-        description="Fun, friendly assistant with a teen-oriented personality/soul.",
+        description="Fun, friendly assistant with a teen-oriented personality/soul. Has web search.",
     )
     print(f"Agent B created: {agent_b.name} (version {agent_b.version})")
 

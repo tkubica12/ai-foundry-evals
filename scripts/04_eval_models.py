@@ -1,10 +1,11 @@
 """
-Step 4: Compare models - gpt-4.1-nano vs gpt-5.2 on complex reasoning tasks.
+Step 4: Compare models - gpt-4.1-nano vs gpt-5.2 on hard computation tasks.
 
-Sends challenging academic/reasoning queries to both models and evaluates
-with Coherence, Fluency, Relevance, and a custom Reasoning Depth evaluator.
-The custom evaluator specifically assesses multi-step reasoning quality,
-which should produce lower scores for the smaller model.
+Sends challenging computation/reasoning queries (with known ground-truth answers)
+to both models and evaluates with Coherence, Fluency, Relevance, a custom
+Reasoning Depth evaluator, and a custom Correctness evaluator that compares
+against known answers. The Correctness evaluator should produce notably lower
+scores for the smaller model.
 """
 
 from azure.ai.projects.models import EvaluatorCategory, EvaluatorDefinitionType
@@ -47,6 +48,39 @@ Output Format (JSON):
 }
 """
 
+CORRECTNESS_PROMPT = """You are a strict grading assistant. You are given a question, \
+a reference answer (ground truth) with the correct values, and a student's response. \
+Your job is to check whether the student's response contains the CORRECT final numerical \
+answers and key results from the reference answer.
+
+GRADING RULES (be very strict):
+- Focus ONLY on whether the final numerical values and key results match the ground truth.
+- Ignore differences in formatting, explanation style, or intermediate steps.
+- If the response gets the final answer wrong (even by a small amount), score LOW.
+- If the response gets most final answers right but misses one key result, score 3.
+- If the response produces all correct final values, score 5.
+- If the response is completely off or doesn't attempt the computation, score 1.
+
+Scale:
+1 - Wrong answer. Key numerical results are incorrect or missing entirely.
+2 - Mostly wrong. Some parts attempted but final answers have significant errors.
+3 - Partially correct. Some final values are right but others are wrong or missing.
+4 - Mostly correct. All main final values are correct with minor issues in secondary results.
+5 - Fully correct. All key numerical results match the ground truth.
+
+Question: {{query}}
+
+Reference Answer (Ground Truth): {{ground_truth}}
+
+Student Response: {{response}}
+
+Output Format (JSON):
+{
+  "result": <integer from 1 to 5>,
+  "reason": "<brief explanation identifying which values are correct or incorrect>"
+}
+"""
+
 
 def run_model_eval(project_client, openai_client, model_name, dataset_id, eval_name):
     """Create an evaluation and run against a model target."""
@@ -55,8 +89,11 @@ def run_model_eval(project_client, openai_client, model_name, dataset_id, eval_n
         type="custom",
         item_schema={
             "type": "object",
-            "properties": {"query": {"type": "string"}},
-            "required": ["query"],
+            "properties": {
+                "query": {"type": "string"},
+                "ground_truth": {"type": "string"},
+            },
+            "required": ["query", "ground_truth"],
         },
         include_sample_schema=True,
     )
@@ -102,6 +139,20 @@ def run_model_eval(project_client, openai_client, model_name, dataset_id, eval_n
             },
             "data_mapping": {
                 "query": "{{item.query}}",
+                "response": "{{sample.output_text}}",
+            },
+        },
+        {
+            "type": "azure_ai_evaluator",
+            "name": "Correctness",
+            "evaluator_name": "correctness_evaluator",
+            "initialization_parameters": {
+                "deployment_name": MODEL_DEPLOYMENT,
+                "threshold": 3,
+            },
+            "data_mapping": {
+                "query": "{{item.query}}",
+                "ground_truth": "{{item.ground_truth}}",
                 "response": "{{sample.output_text}}",
             },
         },
@@ -194,6 +245,50 @@ def main():
         print("Reasoning Depth evaluator registered!")
     except Exception as e:
         print(f"Reasoning Depth evaluator already exists or error: {e}")
+
+    # Register correctness evaluator (checks against ground truth)
+    try:
+        project_client.evaluators.create_version(
+            name="correctness_evaluator",
+            evaluator_version={
+                "name": "correctness_evaluator",
+                "categories": [EvaluatorCategory.QUALITY],
+                "display_name": "Correctness Evaluator",
+                "description": "Checks whether the response contains correct numerical answers by comparing against ground truth",
+                "definition": {
+                    "type": EvaluatorDefinitionType.PROMPT,
+                    "prompt_text": CORRECTNESS_PROMPT,
+                    "init_parameters": {
+                        "type": "object",
+                        "properties": {
+                            "deployment_name": {"type": "string"},
+                            "threshold": {"type": "number"},
+                        },
+                        "required": ["deployment_name", "threshold"],
+                    },
+                    "data_schema": {
+                        "type": "object",
+                        "properties": {
+                            "query": {"type": "string"},
+                            "ground_truth": {"type": "string"},
+                            "response": {"type": "string"},
+                        },
+                        "required": ["query", "ground_truth", "response"],
+                    },
+                    "metrics": {
+                        "custom_prompt": {
+                            "type": "ordinal",
+                            "desirable_direction": "increase",
+                            "min_value": 1,
+                            "max_value": 5,
+                        }
+                    },
+                },
+            },
+        )
+        print("Correctness evaluator registered!")
+    except Exception as e:
+        print(f"Correctness evaluator already exists or error: {e}")
 
     # Upload dataset (use unique version to avoid conflicts)
     import time
