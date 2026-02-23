@@ -1,0 +1,16 @@
+[project]
+name = "ai-foundry-evals-demo"
+version = "0.1.0"
+description = "Azure AI Foundry Evaluations Demo - Agent & Model Evals with Custom Personality Evaluator"
+requires-python = ">=3.10"
+dependencies = [
+    "azure-ai-projects>=2.0.0b1",
+    "azure-identity>=1.19.0",
+    "openai>=1.82.0",
+    "python-dotenv>=1.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.9.0",
+]

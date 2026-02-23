@@ -1,0 +1,69 @@
+name: "AI Foundry Evaluation"
+
+on:
+  workflow_dispatch:    # Manual trigger for demo
+  push:
+    branches: [main]
+    paths:
+      - 'data/**'
+      - 'scripts/**'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  evaluate-agents:
+    name: "Agent Evaluation"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login (Federated Credentials)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Run Agent Evaluation
+        uses: microsoft/ai-agent-evals@v3-beta
+        with:
+          azure-ai-project-endpoint: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
+          deployment-name: "gpt-4.1"
+          agent-ids: "generic-assistant:1,teen-friendly-assistant:1"
+          data-path: ${{ github.workspace }}/data/github-action-data.json
+
+  evaluate-models:
+    name: "Model Evaluation (Python)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login (Federated Credentials)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run Model Comparison Evaluation
+        env:
+          AZURE_AI_PROJECT_ENDPOINT: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
+          AZURE_AI_MODEL_DEPLOYMENT_NAME: "gpt-4.1"
+          MODEL_SMALL: "gpt-4.1-nano"
+          MODEL_LARGE: "gpt-5.2"
+        run: |
+          cd scripts
+          uv run python 04_eval_models.py
