@@ -1,12 +1,12 @@
 """
-Step 3: Evaluate both agents with built-in + custom personality evaluator.
+Step 8: Evaluate agent reasoning process — intent, tool usage, and task completion.
 
-Runs the same set of teenager-oriented queries against both agents and compares:
-- Built-in: Coherence, Fluency, Task Adherence
-- Custom: Personality & Soul Evaluator
+Uses Foundry's agentic process evaluators to assess HOW agents reason and act,
+not just what they output. Tests whether agents correctly identify user intent,
+use tools effectively (Bing web search), and fully complete tasks.
 
-Expected: Agent B (Teen_Friendly_Assistant) should score significantly higher
-on the personality evaluator than Agent A (Generic_Assistant).
+Expected: Both agents should score well on intent resolution, but the teen-friendly
+agent may show different tool usage patterns due to its personality-driven approach.
 """
 
 from openai.types.eval_create_params import DataSourceConfigCustom
@@ -18,32 +18,12 @@ DATA_FILE = str(DATA_DIR / "agent-test-queries.jsonl")
 
 
 def build_testing_criteria(model_deployment):
-    """Build testing criteria with built-in + custom evaluators."""
+    """Build testing criteria with agentic process evaluators."""
     return [
         {
             "type": "azure_ai_evaluator",
-            "name": "Coherence",
-            "evaluator_name": "builtin.coherence",
-            "initialization_parameters": {"deployment_name": model_deployment},
-            "data_mapping": {
-                "query": "{{item.query}}",
-                "response": "{{sample.output_text}}",
-            },
-        },
-        {
-            "type": "azure_ai_evaluator",
-            "name": "Fluency",
-            "evaluator_name": "builtin.fluency",
-            "initialization_parameters": {"deployment_name": model_deployment},
-            "data_mapping": {
-                "query": "{{item.query}}",
-                "response": "{{sample.output_text}}",
-            },
-        },
-        {
-            "type": "azure_ai_evaluator",
-            "name": "Task Adherence",
-            "evaluator_name": "builtin.task_adherence",
+            "name": "Intent Resolution",
+            "evaluator_name": "builtin.intent_resolution",
             "initialization_parameters": {"deployment_name": model_deployment},
             "data_mapping": {
                 "query": "{{item.query}}",
@@ -52,24 +32,23 @@ def build_testing_criteria(model_deployment):
         },
         {
             "type": "azure_ai_evaluator",
-            "name": "Violence",
-            "evaluator_name": "builtin.violence",
+            "name": "Tool Call Accuracy",
+            "evaluator_name": "builtin.tool_call_accuracy",
+            "initialization_parameters": {"deployment_name": model_deployment},
             "data_mapping": {
                 "query": "{{item.query}}",
-                "response": "{{sample.output_text}}",
+                "response": "{{sample.output_items}}",
+                "tool_definitions": "{{sample.tool_definitions}}",
             },
         },
         {
             "type": "azure_ai_evaluator",
-            "name": "Personality & Soul",
-            "evaluator_name": "personality_soul_evaluator",
-            "initialization_parameters": {
-                "deployment_name": model_deployment,
-                "threshold": 3,
-            },
+            "name": "Task Completion",
+            "evaluator_name": "builtin.task_completion",
+            "initialization_parameters": {"deployment_name": model_deployment},
             "data_mapping": {
                 "query": "{{item.query}}",
-                "response": "{{sample.output_text}}",
+                "response": "{{sample.output_items}}",
             },
         },
     ]
@@ -135,7 +114,7 @@ def main():
     import time as _time
     version = str(int(_time.time()))
     dataset = project_client.datasets.upload_file(
-        name="03-agent-quality-queries",
+        name="08-agent-process-queries",
         version=version,
         file_path=DATA_FILE,
     )
@@ -156,7 +135,7 @@ def main():
     run_a = run_agent_eval(
         project_client, openai_client,
         AGENT_A_NAME, agents[AGENT_A_NAME], dataset.id,
-        f"[03] Agent Quality - {AGENT_A_NAME}",
+        f"[08] Agent Process - {AGENT_A_NAME}",
     )
 
     # Run evaluation for Agent B (with soul)
@@ -166,7 +145,7 @@ def main():
     run_b = run_agent_eval(
         project_client, openai_client,
         AGENT_B_NAME, agents[AGENT_B_NAME], dataset.id,
-        f"[03] Agent Quality - {AGENT_B_NAME}",
+        f"[08] Agent Process - {AGENT_B_NAME}",
     )
 
     # Summary
@@ -176,7 +155,8 @@ def main():
     print(f"Agent A ({AGENT_A_NAME}): {run_a.report_url}")
     print(f"Agent B ({AGENT_B_NAME}): {run_b.report_url}")
     print("\nCompare these in Foundry portal > Evaluation to see the difference!")
-    print("Expected: Agent B should score higher on Personality & Soul evaluator.")
+    print("Expected: Both agents should resolve intent well; tool usage patterns")
+    print("may differ due to personality-driven approach in the teen-friendly agent.")
 
 
 if __name__ == "__main__":

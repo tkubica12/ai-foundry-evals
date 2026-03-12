@@ -48,7 +48,7 @@ def main():
 
     # Create the evaluation definition
     eval_object = openai_client.evals.create(
-        name="Continuous Eval - Teen Assistant",
+        name="[05] Continuous Monitoring - teen-friendly-assistant",
         data_source_config=data_source_config,
         testing_criteria=testing_criteria,
     )
@@ -58,7 +58,7 @@ def main():
     continuous_eval_rule = project_client.evaluation_rules.create_or_update(
         id="teen-assistant-continuous-eval",
         evaluation_rule=EvaluationRule(
-            display_name="Teen Assistant Quality Monitor",
+            display_name="[05] Continuous Quality Monitor",
             description="Continuously evaluates Teen_Friendly_Assistant responses for violence, coherence, and personality",
             action=ContinuousEvaluationRuleAction(
                 eval_id=eval_object.id,

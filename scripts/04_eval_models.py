@@ -190,7 +190,7 @@ def run_model_eval(project_client, openai_client, model_name, dataset_id, eval_n
 
     eval_run = openai_client.evals.runs.create(
         eval_id=eval_object.id,
-        name=f"{eval_name} - Run",
+        name=eval_name,
         data_source=data_source,
     )
     print(f"Run started: {eval_run.id}")
@@ -294,7 +294,7 @@ def main():
     import time
     version = str(int(time.time()))
     dataset = project_client.datasets.upload_file(
-        name="model-reasoning-test-queries",
+        name="04-model-comparison-queries",
         version=version,
         file_path=DATA_FILE,
     )
@@ -307,7 +307,7 @@ def main():
     run_small = run_model_eval(
         project_client, openai_client,
         MODEL_SMALL, dataset.id,
-        f"Model Eval - {MODEL_SMALL}",
+        f"[04] Model Comparison - {MODEL_SMALL}",
     )
 
     # Evaluate large model
@@ -317,7 +317,7 @@ def main():
     run_large = run_model_eval(
         project_client, openai_client,
         MODEL_LARGE, dataset.id,
-        f"Model Eval - {MODEL_LARGE}",
+        f"[04] Model Comparison - {MODEL_LARGE}",
     )
 
     # Summary

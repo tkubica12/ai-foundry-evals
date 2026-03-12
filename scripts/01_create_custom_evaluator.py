@@ -1,11 +1,11 @@
 """
-Step 1: Register custom personality evaluator in the Foundry evaluator catalog.
+Step 1: Register custom evaluators in the Foundry evaluator catalog.
 
-This creates a prompt-based evaluator that assesses whether an AI response has
-a fun, friendly, teenager-oriented personality (warm tone, casual language,
-engaging style) vs. a boring/corporate/professional tone.
+Creates two types of custom evaluators:
+1. Prompt-based evaluator (AI judge) — scores response personality 1-5
+2. Code-based evaluator (deterministic) — programmatically checks response engagement metrics
 
-Scoring: 1-5 ordinal scale (5 = very fun & teen-friendly)
+This demonstrates both evaluator creation patterns available in Foundry.
 """
 
 from azure.ai.projects.models import EvaluatorCategory, EvaluatorDefinitionType
@@ -88,7 +88,85 @@ def main():
     print(f"  Name: {evaluator.name}")
     print(f"  Version: {evaluator.version}")
     print(f"  ID: {evaluator.id}")
-    print(f"\nYou can now see it in Foundry portal > Evaluation > Evaluator catalog")
+    print(f"  Find it in Foundry portal > Evaluation > Evaluator catalog")
+
+    # --- Code-based evaluator: Response Engagement Metrics ---
+    grade_code = """
+def grade(response: str, *, query: str = "") -> dict:
+    \"\"\"Deterministic evaluator that checks response engagement signals.\"\"\"
+    score = 5
+    reasons = []
+
+    # Check response length (too short = unhelpful, too long = verbose)
+    word_count = len(response.split())
+    if word_count < 20:
+        score -= 2
+        reasons.append(f"Too short ({word_count} words)")
+    elif word_count > 500:
+        score -= 1
+        reasons.append(f"Very long ({word_count} words)")
+
+    # Check for engagement signals (questions, exclamations, emojis)
+    has_question = "?" in response
+    has_exclamation = "!" in response
+    has_emoji = any(ord(c) > 127 for c in response)
+
+    engagement_signals = sum([has_question, has_exclamation, has_emoji])
+    if engagement_signals == 0:
+        score -= 2
+        reasons.append("No engagement signals (questions, exclamations, or emojis)")
+    elif engagement_signals == 1:
+        score -= 1
+        reasons.append("Low engagement (only 1 signal)")
+
+    # Check for formatting (bullet points, numbered lists)
+    has_formatting = any(marker in response for marker in ["- ", "* ", "1.", "•"])
+    if not has_formatting and word_count > 50:
+        score -= 1
+        reasons.append("Long response without formatting")
+
+    score = max(1, score)
+    reason = "; ".join(reasons) if reasons else "Good engagement: appropriate length with engagement signals"
+    return {"score": score, "reason": reason}
+"""
+
+    engagement_evaluator = project_client.evaluators.create_version(
+        name="response_engagement_evaluator",
+        evaluator_version={
+            "name": "response_engagement_evaluator",
+            "categories": [EvaluatorCategory.QUALITY],
+            "display_name": "Response Engagement Evaluator",
+            "description": "Programmatically checks response engagement: length, formatting, and engagement signals (questions, exclamations, emojis)",
+            "definition": {
+                "type": EvaluatorDefinitionType.CODE,
+                "code_text": grade_code,
+                "data_schema": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string"},
+                        "response": {"type": "string"},
+                    },
+                    "required": ["response"],
+                },
+                "metrics": {
+                    "custom_code": {
+                        "type": "ordinal",
+                        "desirable_direction": "increase",
+                        "min_value": 1,
+                        "max_value": 5,
+                    }
+                },
+            },
+        },
+    )
+
+    print(f"\nCode-based evaluator registered!")
+    print(f"  Name: {engagement_evaluator.name}")
+    print(f"  Version: {engagement_evaluator.version}")
+    print(f"  ID: {engagement_evaluator.id}")
+    print(f"\nBoth evaluators are now visible in Foundry portal > Evaluation > Evaluator catalog")
+    print(f"  1. Personality & Soul Evaluator (prompt-based / AI judge)")
+    print(f"  2. Response Engagement Evaluator (code-based / deterministic)")
 
 
 if __name__ == "__main__":

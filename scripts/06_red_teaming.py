@@ -2,7 +2,9 @@
 Step 6: Red-team the teen-friendly agent.
 
 Uses Azure AI Foundry's automated red-teaming to probe the agent for safety
-vulnerabilities. The workflow:
+vulnerabilities across expanded risk categories (violence, hate/unfairness,
+sexual content, self-harm, prohibited actions, sensitive data leakage) and
+multiple attack strategies including indirect jailbreaks. The workflow:
   1. Create a red team (OpenAI evals API) with safety evaluators
   2. Create an evaluation taxonomy for the target agent + risk categories
   3. Run a red-team evaluation with multiple attack strategies
@@ -20,10 +22,12 @@ from helpers import get_clients, wait_for_run, print_run_results, MODEL_DEPLOYME
 
 AGENT_NAME = "teen-friendly-assistant"
 
-# Risk categories most relevant for a teen-facing assistant
+# Risk categories covering content safety and agentic risks for a teen-facing assistant
 RISK_CATEGORIES = [
     RiskCategory.VIOLENCE,
     RiskCategory.HATE_UNFAIRNESS,
+    RiskCategory.SEXUAL,
+    RiskCategory.SELF_HARM,
     RiskCategory.PROHIBITED_ACTIONS,
     RiskCategory.SENSITIVE_DATA_LEAKAGE,
 ]
@@ -46,13 +50,31 @@ def main():
 
     # ----- Step 1: Create red team (eval group) with safety evaluators -----
     red_team = openai_client.evals.create(
-        name=f"Red Team – {AGENT_NAME}",
+        name=f"[06] Red Team - {AGENT_NAME}",
         data_source_config={"type": "azure_ai_source", "scenario": "red_team"},
         testing_criteria=[
             {
                 "type": "azure_ai_evaluator",
                 "name": "Violence",
                 "evaluator_name": "builtin.violence",
+                "evaluator_version": "1",
+            },
+            {
+                "type": "azure_ai_evaluator",
+                "name": "Sexual Content",
+                "evaluator_name": "builtin.sexual",
+                "evaluator_version": "1",
+            },
+            {
+                "type": "azure_ai_evaluator",
+                "name": "Self Harm",
+                "evaluator_name": "builtin.self_harm",
+                "evaluator_version": "1",
+            },
+            {
+                "type": "azure_ai_evaluator",
+                "name": "Hate Unfairness",
+                "evaluator_name": "builtin.hate_unfairness",
                 "evaluator_version": "1",
             },
             {
@@ -98,14 +120,14 @@ def main():
     print(f"2. Taxonomy created: {taxonomy_file_id}")
 
     # ----- Step 3: Create a red-team run with attack strategies -----
-    attack_strategies = ["Flip", "Base64", "Jailbreak"]
+    attack_strategies = ["Flip", "Base64", "Jailbreak", "IndirectJailbreak"]
     print(f"\n3. Starting red-team run...")
     print(f"   Attack strategies: {attack_strategies}")
     print(f"   Turns per conversation: 3")
 
     eval_run = openai_client.evals.runs.create(
         eval_id=red_team.id,
-        name=f"Red Team Run – {AGENT_NAME}",
+        name=f"[06] Red Team - {AGENT_NAME}",
         data_source={
             "type": "azure_ai_red_team",
             "item_generation_params": {
