@@ -212,14 +212,19 @@ Two jobs run on push to `main` or manual trigger:
 
 #### GitHub Setup
 
-Set these as repository variables (`Settings → Secrets and variables → Actions → Variables`):
+Set these as repository **secrets** (`Settings → Secrets and variables → Actions → Secrets`):
+
+| Secret | Value |
+|--------|-------|
+| `AZURE_CLIENT_ID` | Service principal / managed identity client ID |
+| `AZURE_TENANT_ID` | Entra tenant ID |
+| `AZURE_SUBSCRIPTION_ID` | Azure subscription ID |
+
+Set this as a repository **variable** (`Actions → Variables`):
 
 | Variable | Value |
 |----------|-------|
 | `AZURE_AI_PROJECT_ENDPOINT` | Your Foundry project endpoint |
-| `AZURE_CLIENT_ID` | Service principal client ID |
-| `AZURE_TENANT_ID` | Entra tenant ID |
-| `AZURE_SUBSCRIPTION_ID` | Azure subscription ID |
 
 Configure [federated credentials](https://learn.microsoft.com/azure/developer/github/connect-from-azure-openid-connect) for passwordless auth.
 
