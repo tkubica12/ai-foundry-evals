@@ -207,8 +207,8 @@ Check results in **Foundry portal → Monitoring → Agent Monitoring Dashboard*
 
 Two jobs run on push to `main` or manual trigger:
 
-- **Agent Evaluation**: Uses `microsoft/ai-agent-evals@v3-beta` action — compares both agents with statistical significance testing
-- **Model Evaluation**: Runs `04_eval_models.py` via uv
+- **Agent Quality Evaluation**: Runs `03_eval_agents.py` — compares both agents on quality + personality
+- **Model Comparison Evaluation**: Runs `04_eval_models.py` — compares gpt-4.1-nano vs gpt-5.2 on reasoning
 
 #### GitHub Setup
 
