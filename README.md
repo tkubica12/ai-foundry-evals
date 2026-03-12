@@ -1,262 +1,176 @@
-# Azure AI Foundry Evaluations Demo
+# Azure AI Foundry Evaluations & Red Teaming Demo
 
-End-to-end demo showcasing **Azure AI Foundry Evaluations** — custom evaluators, agent & model comparison, RAG groundedness, agentic process evaluation, comprehensive safety assessment, red teaming, continuous monitoring, and CI/CD integration.
+Comprehensive demo of **Azure AI Foundry** evaluation and red teaming capabilities. Designed for customer-facing presentations — run the scripts, then walk through results in the Foundry portal.
 
-## What This Demo Shows
+## Evaluation Coverage
 
-| # | Category | Description |
-|---|----------|-------------|
-| 01 | **Custom Evaluators** | Prompt-based (AI judge) + code-based (deterministic) evaluators registered in the Foundry catalog |
-| 02 | **Agent Setup** | Two agents (generic vs. teen-friendly persona) with Bing web search |
-| 03 | **Agent Quality Eval** | Side-by-side agent comparison on quality + custom personality evaluator |
-| 04 | **Model Comparison** | gpt-4.1-nano vs gpt-5.2 on hard computation & reasoning tasks |
-| 05 | **Continuous Monitoring** | Automatic production monitoring rule for agent responses |
-| 06 | **Red Teaming** | Automated adversarial testing across 6 risk categories with 4 attack strategies |
-| 07 | **RAG Eval (Offline)** | Groundedness, relevance, and completeness on pre-recorded RAG data with hallucination detection |
-| 08 | **Agent Process Eval** | Intent resolution, tool call accuracy, and task completion assessment |
-| 09 | **Safety Suite** | Full safety scorecard: violence, sexual, self-harm, hate, protected materials, code vulnerability, prompt injection |
-| 10 | **RAG Eval (Online)** | Live RAG agent with file search — groundedness evaluated on real document retrieval |
-| 11 | **Continuous Eval Demo** | Sends conversations to the agent to trigger continuous monitoring |
-| CI | **CI/CD Pipeline** | GitHub Actions workflow using `microsoft/ai-agent-evals` action |
+| Category | What We Demo | Foundry Evaluators Used | Script |
+|----------|-------------|------------------------|--------|
+| **Agent Quality** | Compare generic vs teen-friendly agent | Coherence, Fluency, Task Adherence, Violence + custom Personality | 03 |
+| **Model Comparison** | gpt-4.1-nano vs gpt-5.2 on hard reasoning | Coherence, Fluency, Relevance + custom Reasoning Depth & Correctness | 04 |
+| **RAG (Offline)** | Detect hallucinations in pre-recorded RAG responses | Groundedness, Relevance, Response Completeness | 07 |
+| **RAG (Online)** | Live RAG agent with file search over a knowledge base | Groundedness, Relevance, Response Completeness, Coherence, Fluency | 10 |
+| **Agent Process** | Evaluate HOW agents reason, not just output | Intent Resolution, Tool Call Accuracy, Task Completion | 08 |
+| **Safety Suite** | Full safety scorecard on pre-recorded data | Violence, Sexual, Self-Harm, Hate, Protected Materials, Code Vulnerability, Indirect Attack | 09 |
+| **Red Teaming** | Automated adversarial attacks on teen agent | 6 risk categories × 4 attack strategies (Flip, Base64, Jailbreak, IndirectJailbreak) | 06 |
+| **Custom Evaluators** | Prompt-based (AI judge) + code-based (deterministic) | Personality & Soul, Response Engagement | 01 |
+| **Continuous Monitoring** | Auto-evaluate every agent response in production | Violence, Coherence, Personality (via monitoring rule) | 05, 11 |
+| **CI/CD** | GitHub Actions runs evals on every push | Agent quality + model comparison in pipeline | CI |
 
 ## Prerequisites
 
 - Azure subscription with an AI Foundry project
 - `az login` completed (Entra / DefaultAzureCredential)
-- [uv](https://docs.astral.sh/uv/) package manager installed
+- [uv](https://docs.astral.sh/uv/) package manager
 - Model deployments: `gpt-4.1`, `gpt-4.1-nano`, `gpt-5.2`
 
 ## Quick Start
 
 ```bash
-# Install dependencies
 uv sync
 
-# Configure (edit .env or export vars)
-export AZURE_AI_PROJECT_ENDPOINT="https://sw-v2-project-resource.services.ai.azure.com/api/projects/sw-v2-project"
+# Configure
+export AZURE_AI_PROJECT_ENDPOINT="https://<your-resource>.services.ai.azure.com/api/projects/<your-project>"
 export AZURE_AI_MODEL_DEPLOYMENT_NAME="gpt-4.1"
 
-# Run all steps sequentially
 cd scripts
-uv run python 01_create_custom_evaluator.py    # Register custom evaluators (prompt + code-based)
-uv run python 02_create_agents.py              # Create both agents
-uv run python 03_eval_agents.py                # Agent quality eval (takes ~5 min)
-uv run python 04_eval_models.py                # Model comparison (takes ~5 min)
-uv run python 05_continuous_eval.py            # Set up continuous monitoring rule
-uv run python 06_red_teaming.py                # Red-team the teen agent (~10-30 min)
-uv run python 07_eval_rag.py                   # Offline RAG groundedness eval
-uv run python 08_eval_agent_process.py         # Agent process eval (takes ~5 min)
-uv run python 09_eval_safety_suite.py          # Comprehensive safety scorecard
-uv run python 10_eval_rag_agent.py             # Online RAG agent eval (takes ~5 min)
-uv run python 11_demo_continuous_eval.py       # Send conversations to trigger monitoring
+uv run python 01_create_custom_evaluator.py    # Custom evaluators (prompt + code-based)
+uv run python 02_create_agents.py              # Create agents
+uv run python 03_eval_agents.py                # Agent quality eval (~5 min)
+uv run python 04_eval_models.py                # Model comparison (~10 min)
+uv run python 05_continuous_eval.py            # Set up monitoring rule
+uv run python 06_red_teaming.py                # Red teaming (~10-30 min)
+uv run python 07_eval_rag.py                   # RAG offline eval
+uv run python 08_eval_agent_process.py         # Agent process eval (~5 min)
+uv run python 09_eval_safety_suite.py          # Safety scorecard
+uv run python 10_eval_rag_agent.py             # RAG online eval (~5 min)
+uv run python 11_demo_continuous_eval.py       # Trigger continuous monitoring
 ```
+
+## Demo Walkthrough
+
+### 1. Setup (scripts 01–02)
+
+**Script 01** registers two custom evaluators in the Foundry catalog:
+- **Personality & Soul** (prompt-based) — LLM judges how teen-friendly the response is (1–5)
+- **Response Engagement** (code-based) — Python function checks length, emojis, formatting
+
+**Script 02** creates two agents with Bing web search — one generic, one with a fun teen personality.
+
+> **Show in portal**: Evaluator catalog → both custom evaluators; Agents → compare system prompts
+
+### 2. Agent Quality Eval (script 03)
+
+Compares both agents on 13 teen-oriented queries. The teen agent scores 4–5 on Personality while the generic agent scores 1–3. Both score equally on coherence/fluency.
+
+> **Show in portal**: Evaluation → `[03] Agent Quality` entries → compare side-by-side
+
+### 3. Model Comparison (script 04)
+
+Tests gpt-4.1-nano vs gpt-5.2 on hard math/reasoning tasks with ground-truth answers. The small model fails on complex arithmetic; the large model handles it.
+
+> **Show in portal**: Evaluation → `[04] Model Comparison` entries → highlight Correctness gap
+
+### 4. RAG Evaluation (scripts 07 + 10)
+
+**Offline (07)**: Pre-recorded responses with **deliberate hallucinations** — Foundry's Groundedness evaluator catches them (3 failures). Great for showing hallucination detection.
+
+**Online (10)**: Creates a live RAG agent with file search over an employee handbook. Evaluates real responses — all pass because the agent retrieves actual documents.
+
+> **Show in portal**: Evaluation → `[07] RAG Offline` → click failed items to show hallucinations; then `[10] RAG Agent` → show perfect scores with real retrieval
+
+### 5. Agent Process Eval (script 08)
+
+Evaluates the reasoning process: did the agent understand intent, call the right tools, complete the task? Both agents score well on all three metrics.
+
+> **Show in portal**: Evaluation → `[08] Agent Process` entries
+
+### 6. Safety Suite (script 09)
+
+Runs 7 safety evaluators in one pass. All safe responses pass; the entry with `eval()` code gets flagged for code vulnerability.
+
+> **Show in portal**: Evaluation → `[09] Safety Suite` → show the flagged code vulnerability
+
+### 7. Red Teaming (script 06)
+
+Automated adversarial testing with 4 attack strategies across 6 risk categories. The teen agent resists all attacks (0% attack success rate).
+
+> **Show in portal**: Evaluation → `[06] Red Team` → show attack success rates. Takes ~10-30 min to run.
+
+### 8. Continuous Monitoring (scripts 05 + 11)
+
+**Script 05** creates a monitoring rule. **Script 11** sends conversations to trigger it. Every agent response is automatically evaluated for violence, coherence, and personality. You can also chat with the agent in the **Agents playground** — all responses are auto-evaluated.
+
+> **Show in portal**: Monitoring → Agent Monitoring Dashboard → show live evaluation metrics
+
+### 9. CI/CD (GitHub Actions)
+
+Two jobs run on push to `main`: agent quality eval + model comparison. Both use federated credentials for passwordless auth.
+
+> **Show in GitHub**: Actions tab → green workflow run → evaluation results in logs
+
+## Naming Convention
+
+All evals use `[XX] Category - Target` so they're easy to find in the portal:
+
+| Portal Name | Script |
+|-------------|--------|
+| `[03] Agent Quality - generic-assistant` | 03 |
+| `[03] Agent Quality - teen-friendly-assistant` | 03 |
+| `[04] Model Comparison - gpt-4.1-nano` | 04 |
+| `[04] Model Comparison - gpt-5.2` | 04 |
+| `[05] Continuous Monitoring - teen-friendly-assistant` | 05 |
+| `[06] Red Team - teen-friendly-assistant` | 06 |
+| `[07] RAG Offline - Groundedness & Completeness` | 07 |
+| `[08] Agent Process - generic-assistant` | 08 |
+| `[08] Agent Process - teen-friendly-assistant` | 08 |
+| `[09] Safety Suite - Comprehensive Assessment` | 09 |
+| `[10] RAG Agent - rag-handbook-assistant` | 10 |
 
 ## Project Structure
 
 ```
-├── .env                               # Environment config (not committed)
 ├── .github/workflows/eval.yml         # CI/CD pipeline
-├── pyproject.toml                     # Python project (uv)
+├── pyproject.toml                     # Python dependencies (uv)
 ├── data/
 │   ├── agent-test-queries.jsonl       # Teen-oriented queries for agent eval
-│   ├── model-test-queries.jsonl       # Hard computation & reasoning for model comparison
-│   ├── rag-test-queries.jsonl         # RAG data with hallucinations (offline eval)
-│   ├── rag-agent-test-queries.jsonl   # Queries + ground truth for live RAG agent
-│   ├── techvibe-handbook.md           # TechVibe employee handbook (RAG knowledge base)
+│   ├── model-test-queries.jsonl       # Hard computation & reasoning tasks
+│   ├── rag-test-queries.jsonl         # RAG data with hallucinations (offline)
+│   ├── rag-agent-test-queries.jsonl   # Queries for live RAG agent
+│   ├── techvibe-handbook.md           # Employee handbook (RAG knowledge base)
 │   ├── safety-test-queries.jsonl      # Safety edge cases
-│   └── github-action-data.json        # Data file for GitHub Action CI/CD
+│   └── github-action-data.json        # CI/CD eval data
 ├── scripts/
 │   ├── helpers.py                     # Shared config & utilities
-│   ├── 01_create_custom_evaluator.py  # Register prompt-based + code-based evaluators
-│   ├── 02_create_agents.py            # Create Generic & Teen agents (Bing web search)
-│   ├── 03_eval_agents.py              # Agent quality evaluation
-│   ├── 04_eval_models.py              # Model comparison evaluation
-│   ├── 05_continuous_eval.py          # Set up continuous eval monitoring rule
-│   ├── 06_red_teaming.py              # Automated adversarial red teaming
-│   ├── 07_eval_rag.py                 # RAG offline evaluation (pre-recorded data)
-│   ├── 08_eval_agent_process.py       # Agent process evaluation (intent, tools, tasks)
-│   ├── 09_eval_safety_suite.py        # Comprehensive safety & security evaluation
-│   ├── 10_eval_rag_agent.py           # RAG online evaluation (live file search agent)
-│   └── 11_demo_continuous_eval.py     # Demo: trigger continuous monitoring
+│   ├── 01_create_custom_evaluator.py  # Custom evaluators (prompt + code)
+│   ├── 02_create_agents.py            # Create agents (generic + teen)
+│   ├── 03_eval_agents.py              # Agent quality eval
+│   ├── 04_eval_models.py              # Model comparison eval
+│   ├── 05_continuous_eval.py          # Continuous monitoring rule
+│   ├── 06_red_teaming.py              # Red teaming
+│   ├── 07_eval_rag.py                 # RAG offline eval
+│   ├── 08_eval_agent_process.py       # Agent process eval
+│   ├── 09_eval_safety_suite.py        # Safety suite eval
+│   ├── 10_eval_rag_agent.py           # RAG online eval (file search)
+│   └── 11_demo_continuous_eval.py     # Trigger continuous monitoring
 └── personality-eval/
-    └── data-sample.jsonl              # Original sample data
+    └── data-sample.jsonl
 ```
 
-## Naming Convention in Foundry Portal
+## CI/CD Setup
 
-All evaluations use a `[XX] Category - Target` naming pattern so you can immediately identify them in the Foundry portal:
-
-| Portal Name | Type | Script |
-|-------------|------|--------|
-| `[03] Agent Quality - generic-assistant` | Agent quality eval | 03 |
-| `[03] Agent Quality - teen-friendly-assistant` | Agent quality eval | 03 |
-| `[04] Model Comparison - gpt-4.1-nano` | Model eval | 04 |
-| `[04] Model Comparison - gpt-5.2` | Model eval | 04 |
-| `[05] Continuous Monitoring - teen-friendly-assistant` | Continuous eval | 05 |
-| `[06] Red Team - teen-friendly-assistant` | Red teaming | 06 |
-| `[07] RAG Offline - Groundedness & Completeness` | RAG eval (offline) | 07 |
-| `[08] Agent Process - generic-assistant` | Agent process eval | 08 |
-| `[08] Agent Process - teen-friendly-assistant` | Agent process eval | 08 |
-| `[09] Safety Suite - Comprehensive Assessment` | Safety eval | 09 |
-| `[10] RAG Agent - rag-handbook-assistant` | RAG eval (online) | 10 |
-
-## Step-by-Step Demo Guide
-
-### Step 1 — Custom Evaluators (`01_create_custom_evaluator.py`)
-
-Registers **two types of custom evaluators** in the Foundry evaluator catalog:
-
-- **Prompt-based (AI judge)**: "Personality & Soul Evaluator" — an LLM scores responses 1–5 on how fun, warm, and teenager-friendly they are.
-- **Code-based (deterministic)**: "Response Engagement Evaluator" — a Python function programmatically checks response length, formatting, and engagement signals (emojis, questions, exclamations).
-
-After running, find both in **Foundry portal → Evaluation → Evaluator catalog**.
-
-### Step 2 — Create Agents (`02_create_agents.py`)
-
-Creates two Foundry agents using the same model (`gpt-4.1`) but different prompts. Both agents have **Bing web search** enabled via the Bing Grounding tool.
-
-- **generic-assistant**: Minimal system prompt — *"You are a helpful assistant."*
-- **teen-friendly-assistant**: Rich personality/soul — casual language, emojis, humor, teen-relatable examples
-
-### Step 3 — Agent Quality Eval (`03_eval_agents.py`)
-
-Runs both agents through 13 teenager-oriented queries with these evaluators:
-
-- **Built-in**: Coherence, Fluency, Task Adherence, Violence
-- **Custom**: Personality & Soul Evaluator
-
-**Expected**: Teen-friendly agent scores significantly higher on personality (4–5) vs generic (1–3). Both score comparably on coherence/fluency. View and compare in **Foundry portal → Evaluation**.
-
-### Step 4 — Model Comparison (`04_eval_models.py`)
-
-Sends 10 **hard computation and reasoning tasks** to both `gpt-4.1-nano` and `gpt-5.2`. Evaluates with Coherence, Fluency, Relevance, custom Reasoning Depth, and custom Correctness (with ground truth).
-
-**Expected**: gpt-4.1-nano struggles with multi-step arithmetic and formal proofs. gpt-5.2 handles them correctly. The questions are specifically designed to expose the capability gap.
-
-### Step 5 — Continuous Monitoring (`05_continuous_eval.py`)
-
-Sets up an automatic evaluation rule that monitors `teen-friendly-assistant` in production. When the agent responds, a sample of responses is evaluated for violence, coherence, and personality.
-
-Visible in **Foundry portal → Monitoring → Agent Monitoring Dashboard**.
-
-### Step 6 — Red Teaming (`06_red_teaming.py`)
-
-Runs **automated adversarial red teaming** against the teen-friendly agent:
-
-1. Targets 6 risk categories: Violence, Hate/Unfairness, Sexual, Self-Harm, Prohibited Actions, Sensitive Data Leakage
-2. Uses 4 attack strategies: Flip, Base64, Jailbreak, IndirectJailbreak
-3. Multi-turn conversations (3 turns each)
-4. Reports Attack Success Rate (ASR) per category
-
-**Expected**: Low ASR — the agent resists adversarial attempts. View in **Foundry portal → Evaluation**.
-
-> **Note**: Red teaming takes ~10–30 minutes.
-
-### Step 7 — RAG Offline Eval (`07_eval_rag.py`)
-
-Evaluates pre-recorded **RAG responses** from a company knowledge base. The dataset includes **deliberately hallucinated** and **incomplete** responses to show Foundry catching issues.
-
-- **Groundedness**: Catches hallucinated content not in the retrieved context
-- **Relevance**: Measures how well the response addresses the query
-- **Response Completeness**: Catches missing critical information
-
-**Expected**: Entries with hallucinations fail Groundedness; incomplete entries fail Completeness.
-
-### Step 8 — Agent Process Eval (`08_eval_agent_process.py`)
-
-Evaluates **HOW agents reason and act**, not just what they output:
-
-- **Intent Resolution**: Did the agent correctly identify the user's intent?
-- **Tool Call Accuracy**: Did the agent call the right tools (Bing web search) with correct parameters?
-- **Task Completion**: Did the agent fully complete the requested task?
-
-**Expected**: Both agents resolve intent well; tool usage patterns may differ due to personality.
-
-### Step 9 — Safety Suite (`09_eval_safety_suite.py`)
-
-Runs the **full safety evaluator suite** against pre-recorded responses as a safety "scorecard":
-
-- **Content Safety**: Violence, Sexual, Self-Harm, Hate & Unfairness
-- **IP Protection**: Protected Materials (copyright detection)
-- **Code Security**: Code Vulnerability (detects `eval()`, SQL injection, etc.)
-- **Prompt Injection**: Indirect Attack / XPIA
-
-**Expected**: Safe responses pass; the entry with `eval()` usage gets flagged for code vulnerability.
-
-### Step 10 — RAG Online Eval (`10_eval_rag_agent.py`)
-
-Creates a **live RAG agent** with file search over the TechVibe Solutions employee handbook, then evaluates it:
-
-1. **Uploads** the handbook to a vector store
-2. **Creates** a RAG agent with file search tool
-3. **Evaluates live responses** with Groundedness, Relevance, Response Completeness, Coherence, Fluency
-
-Foundry's Groundedness evaluator **automatically extracts context** from the agent's file search tool calls — no manual context mapping needed.
-
-**Expected**: High scores across all evaluators (responses grounded in real documents).
-
-### Step 11 — Continuous Eval Demo (`11_demo_continuous_eval.py`)
-
-After setting up the monitoring rule (step 5), this script **sends 5 conversations** to the teen-friendly agent to generate responses that trigger the continuous evaluation rule.
-
-Check results in **Foundry portal → Monitoring → Agent Monitoring Dashboard**. You can also chat with the agent directly in the **Agents playground** — every response is automatically evaluated.
-
-> **Note**: Results may take a few minutes to appear in the dashboard.
-
-### CI/CD — GitHub Actions (`.github/workflows/eval.yml`)
-
-Two jobs run on push to `main` or manual trigger:
-
-- **Agent Quality Evaluation**: Runs `03_eval_agents.py` — compares both agents on quality + personality
-- **Model Comparison Evaluation**: Runs `04_eval_models.py` — compares gpt-4.1-nano vs gpt-5.2 on reasoning
-
-#### GitHub Setup
-
-Set these as repository **secrets** (`Settings → Secrets and variables → Actions → Secrets`):
+Set repository **secrets** (`Settings → Secrets and variables → Actions → Secrets`):
 
 | Secret | Value |
 |--------|-------|
-| `AZURE_CLIENT_ID` | Service principal / managed identity client ID |
+| `AZURE_CLIENT_ID` | Managed identity client ID |
 | `AZURE_TENANT_ID` | Entra tenant ID |
 | `AZURE_SUBSCRIPTION_ID` | Azure subscription ID |
 
-Set this as a repository **variable** (`Actions → Variables`):
+Set repository **variable** (`Actions → Variables`):
 
 | Variable | Value |
 |----------|-------|
 | `AZURE_AI_PROJECT_ENDPOINT` | Your Foundry project endpoint |
 
 Configure [federated credentials](https://learn.microsoft.com/azure/developer/github/connect-from-azure-openid-connect) for passwordless auth.
-
-## Foundry Portal Demo Tips
-
-After running the scripts, walk through these in the portal:
-
-1. **Evaluator catalog** → Find both custom evaluators (prompt-based + code-based)
-2. **Agents** → Show all three agents and their different configurations
-3. **Evaluation** → `[03]` entries: compare agent quality side-by-side, show personality score difference
-4. **Evaluation** → `[04]` entries: compare model reasoning, highlight correctness gap
-5. **Evaluation** → `[07]` entry: click into failed Groundedness items to see hallucinations caught
-6. **Evaluation** → `[10]` entry: show live RAG with file search retrieval + groundedness
-7. **Evaluation** → `[08]` entries: compare intent resolution and tool call accuracy
-8. **Evaluation** → `[09]` entry: show comprehensive safety scorecard
-9. **Evaluation** → `[06]` entry: show red teaming attack success rate
-10. **Monitoring** → Show continuous evaluation dashboard with live metrics
-
-## Foundry Evaluator Coverage
-
-This demo showcases evaluators across all major categories available in Azure AI Foundry:
-
-| Category | Evaluators Demonstrated | Script(s) |
-|----------|------------------------|-----------|
-| **General Purpose** | Coherence, Fluency | 03, 04 |
-| **RAG** | Groundedness, Relevance, Response Completeness | 07, 10 |
-| **Agent (System)** | Task Adherence, Intent Resolution, Task Completion | 03, 08 |
-| **Agent (Process)** | Tool Call Accuracy | 08 |
-| **Content Safety** | Violence, Sexual, Self-Harm, Hate & Unfairness | 06, 09 |
-| **Security** | Code Vulnerability, Indirect Attack (XPIA), Protected Materials | 09 |
-| **Agent Safety** | Prohibited Actions, Sensitive Data Leakage | 06 |
-| **Custom (Prompt)** | Personality & Soul, Reasoning Depth, Correctness | 01, 03, 04 |
-| **Custom (Code)** | Response Engagement | 01 |
-| **Red Teaming** | 6 risk categories × 4 attack strategies | 06 |
-| **Continuous Eval** | Production monitoring with auto-triggered evaluators | 05, 11 |
